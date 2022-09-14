@@ -28,7 +28,7 @@ build $builddir/imgui_widgets.o: cxx src/imgui/imgui_widgets.cpp
 build $builddir/imgui_tables.o: cxx src/imgui/imgui_tables.cpp
 
 
-build $builddir/korc: link $builddir/main.o $builddir/ksp.o $builddir/imgui_glfw.o $builddir/imgui_opengl3.o $builddir/imgui.o $builddir/imgui_draw.o $builddir/imgui_widgets.o $builddir/imgui_tables.o
+build $builddir/rock: link $builddir/main.o $builddir/ksp.o $builddir/imgui_glfw.o $builddir/imgui_opengl3.o $builddir/imgui.o $builddir/imgui_draw.o $builddir/imgui_widgets.o $builddir/imgui_tables.o
   libs = -lglfw -lOpenGL
 
 
@@ -38,4 +38,4 @@ build $builddir/serialize.o: cxx src/serialize.cpp
 build $builddir/serialize: link $builddir/serialize.o $builddir/ksp.o
 
 
-default $builddir/korc
+default $builddir/rock
