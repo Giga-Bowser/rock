@@ -1,0 +1,41 @@
+cxx = clang++
+cxxflags = -std=c++20 -O3
+ldflags = -L/lib/ -O3
+builddir = build
+
+rule cxx
+  command = $cxx $cxxflags -c $in -o $out
+
+rule link
+  command = $cxx $ldflags -o $out $in $libs
+
+# my files
+build $builddir/ksp.o: cxx src/ksp.cpp
+
+build $builddir/main.o: cxx src/main.cpp
+
+# imgui
+build $builddir/imgui.o: cxx src/imgui/imgui.cpp
+
+build $builddir/imgui_draw.o: cxx src/imgui/imgui_draw.cpp
+
+build $builddir/imgui_glfw.o: cxx src/imgui/imgui_impl_glfw.cpp
+
+build $builddir/imgui_opengl3.o: cxx src/imgui/imgui_impl_opengl3.cpp
+
+build $builddir/imgui_widgets.o: cxx src/imgui/imgui_widgets.cpp
+
+build $builddir/imgui_tables.o: cxx src/imgui/imgui_tables.cpp
+
+
+build $builddir/korc: link $builddir/main.o $builddir/ksp.o $builddir/imgui_glfw.o $builddir/imgui_opengl3.o $builddir/imgui.o $builddir/imgui_draw.o $builddir/imgui_widgets.o $builddir/imgui_tables.o
+  libs = -lglfw -lOpenGL
+
+
+# serializer
+build $builddir/serialize.o: cxx src/serialize.cpp
+
+build $builddir/serialize: link $builddir/serialize.o $builddir/ksp.o
+
+
+default $builddir/korc
