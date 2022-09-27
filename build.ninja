@@ -1,6 +1,6 @@
 cxx = clang++
-cxxflags = -std=c++20 -O3
-ldflags = -L/lib/ -O3
+cxxflags = -std=c++20 -O3 -Wall -Wextra -pedantic
+ldflags = -O3
 builddir = build
 
 rule cxx
@@ -36,6 +36,3 @@ build $builddir/rock: link $builddir/main.o $builddir/ksp.o $builddir/imgui_glfw
 build $builddir/serialize.o: cxx src/serialize.cpp
 
 build $builddir/serialize: link $builddir/serialize.o $builddir/ksp.o
-
-
-default $builddir/rock

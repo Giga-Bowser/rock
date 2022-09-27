@@ -1,6 +1,5 @@
 #include <string>
 #include <vector>
-#include <cmath>
 
 using namespace std;
 
@@ -13,13 +12,14 @@ namespace KSP {
 		double atmIsp;
 
 		double vacThrust;
-		double atmThrust;
 
-		constexpr double thrust(double atm) const { return lerp(vacThrust, atmThrust, atm); };
+		double burnTime;
 
-		constexpr double isp(double atm) const { return lerp(vacIsp, atmIsp, atm); };
+		constexpr double isp(double atm) const { return vacIsp + atm * (atmIsp - vacIsp); };
 
-		constexpr double consumption(double atm) const { return thrust(atm) / (isp(atm) * 9.81); };
+		constexpr double thrust(double atm) const { return vacThrust * isp(atm) / vacIsp; };
+
+		constexpr double consumption() const { return vacThrust / (vacIsp * 9.81); };
 	};
 
 	struct Args {
@@ -41,7 +41,7 @@ namespace KSP {
 		vector<double> atm;
 		vector<double> twr;
 
-		Args toArgs(int i = 0);
+		Args toArgs();
 	};
 
 	struct Stage {
@@ -50,7 +50,7 @@ namespace KSP {
 
 		double mass;
 	};
-};
+}; // namespace KSP
 
 ostream& operator<<(ostream& os, const KSP::Engine& engine);
 istream& operator>>(istream& is, KSP::Engine& engine);

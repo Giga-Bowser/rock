@@ -1,69 +1,98 @@
-#include <vector>
-#include <string>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <nlohmann/json.hpp>
+#include <regex>
+#include <sstream>
+#include <string>
+#include <vector>
 
 #include "ksp.hpp"
 
-
-using json = nlohmann::json;
-
 using namespace std;
+using namespace KSP;
 
+vector<Engine> serializeEngine(string partString) {
+	vector<Engine> engines;
 
-enum PartTypes {
-	UNKNOWN,
-	LFO_ENGINE,
-	LFO_TANK,
-	BOOSTER,
-	DECOUPLER,
-};
+	partString = regex_replace(partString, regex("\\s*\\/\\/.+"), "");
 
-KSP::Engine convertEngine(json part) {
-	KSP::Engine engine;
+	smatch massMatch;
+	regex_search(partString, massMatch, regex("origMass = (.+)"));
+	double origMass = atof(massMatch[1].str().c_str());
 
-	engine.name = part["name"];
-	engine.mass = part["mass"];
+	regex bodyRegex("\\tCONFIG\\n\\t*\\{((.|\\n)*?})\\s*}");
+	auto bodyIt = sregex_iterator(partString.begin(), partString.end(), bodyRegex);
 
-	engine.vacIsp = part["vacIsp"];
-	engine.atmIsp = part["atmIsp"];
+	for (; bodyIt != sregex_iterator(); ++bodyIt) {
+		Engine engine;
 
-	engine.vacThrust = part["vacThrust"];
-	engine.atmThrust = part["atmThrust"];
+		string bodyString = smatch(*bodyIt)[1].str();
+		smatch name;
+		regex_search(bodyString, name, regex("name = (.+)"));
+		engine.name = name[1].str();
 
-	return engine;
-}
+		smatch isp;
+		regex_search(bodyString, isp, regex("key = 0 (.+)\\s+key = 1 (.+)"));
+		engine.vacIsp = atof(isp[1].str().c_str());
+		engine.atmIsp = atof(isp[2].str().c_str());
 
-int main() {
-	ifstream partsFile("parts.json");
-	json partsJson;
-	partsFile >> partsJson;
+		smatch thrust;
+		regex_search(bodyString, thrust, regex("maxThrust = (.+)"));
+		engine.vacThrust = atof(thrust[1].str().c_str());
 
-	vector<KSP::Engine> engines;
+		smatch massMult;
+		if (regex_search(bodyString, massMult, regex("massMult = (.+)"))) {
+			engine.mass = atof(massMult[1].str().c_str()) * origMass;
+		} else {
+			engine.mass = origMass;
+		}
 
-	for (auto& pack : partsJson["packs"]) {
-		for (auto& part : pack["parts"]) {
-			if (part["type"] == "TYPES.LFO_ENGINE") {
-				engines.push_back(convertEngine(part));
+		engines.push_back(engine);
+	}
+
+	regex testRegex("TESTFLIGHT\\s*\\{((.|\\s)*?)}");
+
+	auto testIt = sregex_iterator(partString.begin(), partString.end(), testRegex);
+
+	for (; testIt != sregex_iterator(); ++testIt) {
+		string testString = smatch(*testIt)[1].str();
+
+		smatch burnTime;
+		regex_search(testString, burnTime, regex("\\s*name = (.+)\\n(.|\\s)*?ratedBurnTime = (\\d*.?\\d*)"));
+
+		for (auto& engine : engines) {
+
+			if (burnTime[1].str() == engine.name) {
+				engine.burnTime = atof(burnTime[3].str().c_str());
 			}
 		}
 	}
 
+	return engines;
+}
 
-	ofstream file;
+int main() {
+	filesystem::directory_iterator engineIterator("Engine_Configs/");
 
-	file.open("partdata/engines.dat", ios::trunc);
-	for (const auto& part : engines) { 
-		file << part;
-		cout << part.name << endl;
-		cout << part.mass << endl;
-		cout << part.vacIsp << endl;
-		cout << part.atmIsp << endl;
-		cout << part.vacThrust << endl;
-		cout << part.atmThrust << endl;
+	vector<Engine> engines;
+
+	for (const auto& engineFile : engineIterator) {
+		std::ifstream file(engineFile.path(), ios::binary | ios::ate);
+		auto fileSize = file.tellg();
+		file.seekg(ios::beg);
+
+		string partString(fileSize, 0);
+		file.read(&partString[0], fileSize);
+
+		auto fileEngines = serializeEngine(partString);
+
+		engines.insert(engines.cend(), fileEngines.cbegin(), fileEngines.cend());
 	}
-	file.close();
+
+	ofstream outFile("partdata/roengines.dat", ios::trunc | ios::binary);
+	for (const auto& engine : engines) {
+		outFile << engine;
+	}
 
 	return 0;
 }
